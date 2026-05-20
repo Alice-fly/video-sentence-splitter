@@ -1,6 +1,6 @@
 # Video Sentence Splitter
 
-外语学习工具：YouTube / B站 / 本地视频 → 字幕提取（Whisper） → LLM 语义断句 → 翻译 → 流媒体播放 + 交互编辑。
+外语学习工具：YouTube / B站 / 本地视频 → 字幕提取（Whisper） → LLM 语义断句 → 翻译 → 媒体播放 + 交互编辑。
 
 ## 功能
 
