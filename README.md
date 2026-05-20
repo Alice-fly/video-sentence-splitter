@@ -12,7 +12,7 @@
 
 ## 快速开始
 
-从 [Releases](../../releases) 下载最新打包版本，解压后双击 `start.bat`，浏览器自动打开即可使用。
+从 [Releases](../../releases) 下载最新打包版本，解压后双击 `start.bat`，程序会自动下载相关依赖，等浏览器自动打开即可使用。
 
 首次使用需要配置 **LLM API Key**（支持所有 OpenAI 兼容接口，如 DeepSeek、OpenAI、Groq 等），以及可选的 YouTube/B站 Cookie。
 
