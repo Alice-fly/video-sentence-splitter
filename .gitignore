@@ -1,0 +1,48 @@
+# Binary / large media directories
+videos/
+subtitles/
+outputs/
+
+# Database & runtime data
+data/
+whisper_models/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+*.egg
+
+# Node
+node_modules/
+frontend/node_modules/
+frontend/dist/
+
+# IDE
+.vscode/
+.idea/
+
+# Claude Code docs (dev only)
+CLAUDE*.md
+DESIGN_REVIEW.md
+
+# Packaging
+build.ps1
+run.py
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment & secrets
+.env
+.env.local
+cookies.txt
+
+# PyInstaller
+*.manifest
+*.warn
