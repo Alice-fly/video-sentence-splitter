@@ -16,8 +16,8 @@
       <WorkflowPanel
         :video="video"
         :translate-method="translateMethod"
-        @import-youtube="openImportDialog('youtube')"
-        @import-bilibili="openImportDialog('bilibili')"
+        @import-youtube="triggerImport('youtube')"
+        @import-bilibili="triggerImport('bilibili')"
         @trigger-whisper="triggerSubtitle('whisper')"
         @import-subtitle-file="handleSubtitleFile"
         @trigger-segment="triggerSegment()"
@@ -94,25 +94,6 @@
       </div>
     </template>
 
-    <!-- Import URL dialog -->
-    <el-dialog v-model="importDialog.visible" :title="importDialog.title" width="420px">
-      <el-form @submit.prevent="confirmImport">
-        <el-form-item label="视频链接">
-          <el-input v-model="importDialog.url" placeholder="粘贴 YouTube 或 B站 链接" />
-        </el-form-item>
-        <el-form-item label="源语言">
-          <el-radio-group v-model="importDialog.language">
-            <el-radio value="auto">自动</el-radio>
-            <el-radio value="ja">日语</el-radio>
-            <el-radio value="en">英语</el-radio>
-            <el-radio value="zh">中文</el-radio>
-          </el-radio-group>
-        </el-form-item>
-        <el-button type="primary" native-type="submit" :loading="importDialog.loading">
-          开始导入
-        </el-button>
-      </el-form>
-    </el-dialog>
   </div>
 </template>
 
@@ -145,15 +126,6 @@ const editMode = ref(false)
 const rawSubtitles = ref([])
 const showMiniPlayer = ref(false)
 let playerObserver = null
-
-const importDialog = ref({
-  visible: false,
-  title: '',
-  source: '',
-  url: '',
-  language: 'auto',
-  loading: false,
-})
 
 const isProcessing = computed(() => {
   if (!video.value) return false
@@ -241,35 +213,26 @@ function connectWebSocket() {
 }
 
 // ── Import ──
-function openImportDialog(source) {
-  importDialog.value = {
-    visible: true,
-    title: source === 'youtube' ? '导入 YouTube 视频' : '导入 B站 视频',
-    source,
-    url: video.value.url && video.value.url !== '' ? video.value.url : '',
-    language: video.value.original_language || 'auto',
-    loading: false,
-  }
-}
-
-async function confirmImport() {
-  importDialog.value.loading = true
+async function triggerImport(source) {
   try {
-    const body = { url: importDialog.value.url, original_language: importDialog.value.language }
-    if (importDialog.value.source === 'youtube') {
+    const v = video.value
+    const body = {
+      url: v.url || '',
+      original_language: v.original_language || 'auto',
+      trim_start: v.trim_start,
+      trim_end: v.trim_end,
+    }
+    if (source === 'youtube') {
       await triggerImportYoutube(route.params.id, body)
       ElMessage.success('YouTube 导入已开始')
     } else {
       await triggerImportBilibili(route.params.id, body)
       ElMessage.success('B站导入已开始')
     }
-    importDialog.value.visible = false
     video.value.import_status = 'processing'
     video.value.progress_message = '正在导入...'
   } catch (e) {
     ElMessage.error(e.response?.data?.detail || '导入失败')
-  } finally {
-    importDialog.value.loading = false
   }
 }
 

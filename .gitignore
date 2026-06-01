@@ -22,6 +22,14 @@ node_modules/
 frontend/node_modules/
 frontend/dist/
 
+# Playwright
+frontend/tests/test-results/
+frontend/tests/playwright-report/
+frontend/test-results/
+frontend/playwright-report/
+frontend/tests/fixtures/test-video.mp4
+frontend/tests
+
 # IDE
 .vscode/
 .idea/
@@ -33,6 +41,7 @@ DESIGN_REVIEW.md
 # Packaging
 build.ps1
 run.py
+dev.bat
 
 # OS
 .DS_Store

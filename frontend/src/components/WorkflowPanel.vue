@@ -30,6 +30,28 @@
             </template>
           </el-dropdown>
         </div>
+        <div v-if="video.import_status === 'failed'" class="step-actions">
+          <el-dropdown @command="(cmd) => { if (cmd === 'youtube') $emit('import-youtube'); else $emit('import-bilibili') }">
+            <el-button size="small" type="primary">重试导入</el-button>
+            <template #dropdown>
+              <el-dropdown-menu>
+                <el-dropdown-item command="youtube">YouTube</el-dropdown-item>
+                <el-dropdown-item command="bilibili">B站</el-dropdown-item>
+              </el-dropdown-menu>
+            </template>
+          </el-dropdown>
+        </div>
+        <div v-if="video.import_status === 'completed'" class="step-actions">
+          <el-dropdown @command="(cmd) => { if (cmd === 'youtube') $emit('import-youtube'); else $emit('import-bilibili') }">
+            <el-button size="small" text>重新导入</el-button>
+            <template #dropdown>
+              <el-dropdown-menu>
+                <el-dropdown-item command="youtube">YouTube</el-dropdown-item>
+                <el-dropdown-item command="bilibili">B站</el-dropdown-item>
+              </el-dropdown-menu>
+            </template>
+          </el-dropdown>
+        </div>
       </div>
 
       <div class="step-arrow">→</div>
@@ -93,16 +115,16 @@
 
       <div class="step-arrow">→</div>
 
-      <!-- Step 3: Segment -->
+      <!-- Step 3: AI Segment (optional) -->
       <div class="step step--sub" :class="stepClass(video.segment_status)">
         <div class="step-header">
           <span class="step-icon">
             <el-icon v-if="video.segment_status === 'completed'"><CircleCheck /></el-icon>
             <el-icon v-else-if="video.segment_status === 'processing'"><Loading /></el-icon>
             <el-icon v-else-if="video.segment_status === 'failed'"><CircleClose /></el-icon>
-            <span v-else>3</span>
+            <span v-else>✦</span>
           </span>
-          <span class="step-label">断句</span>
+          <span class="step-label">AI 优化</span>
         </div>
         <div v-if="video.segment_status === 'processing'" class="step-progress">
           <ProgressBar :progress="video.segment_progress" :message="video.segment_progress_message" compact />
@@ -110,11 +132,11 @@
         <div v-if="video.segment_status === 'failed'" class="step-error">
           {{ video.segment_error_message }}
         </div>
-        <div v-if="video.segment_status === 'not_started' && video.subtitle_status === 'completed'" class="step-actions">
-          <el-button size="small" type="primary" @click="$emit('trigger-segment')">AI 断句</el-button>
+        <div v-if="video.subtitle_status === 'completed' && video.segment_status !== 'completed' && video.segment_status !== 'processing'" class="step-actions">
+          <el-button size="small" type="primary" @click="$emit('trigger-segment')">AI 优化断句</el-button>
         </div>
         <div v-if="video.segment_status === 'completed'" class="step-actions">
-          <el-button size="small" text @click="$emit('trigger-segment')">重新断句</el-button>
+          <el-button size="small" text @click="$emit('trigger-segment')">重新优化</el-button>
         </div>
       </div>
 
@@ -137,7 +159,7 @@
         <div v-if="video.translate_status === 'failed'" class="step-error">
           {{ video.translate_error_message }}
         </div>
-        <div v-if="video.translate_status === 'not_started' && video.segment_status === 'completed'" class="step-actions">
+        <div v-if="video.translate_status === 'not_started' && video.subtitle_status === 'completed'" class="step-actions">
           <el-button size="small" type="primary" @click="$emit('trigger-translate')">{{ translateLabel }}</el-button>
         </div>
         <div v-if="video.translate_status === 'completed'" class="step-actions">

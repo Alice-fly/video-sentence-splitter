@@ -51,6 +51,8 @@ class Video(Base):
     local_video_path = Column(Text, nullable=True)
     subtitle_path = Column(Text, nullable=True)
     duration = Column(Float, nullable=True)
+    trim_start = Column(Float, nullable=True)
+    trim_end = Column(Float, nullable=True)
 
     # ── Per-step tracking ──
     source_type = Column(String, nullable=True)

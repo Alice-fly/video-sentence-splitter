@@ -35,6 +35,41 @@
           </el-upload>
         </el-form-item>
 
+        <!-- Trim range (YouTube / Bilibili only) -->
+        <el-form-item v-if="sourceType !== 'local_file'">
+          <template #label>
+            裁剪范围
+            <el-tooltip content="可选，设置后只下载视频的指定时间段。单位：秒。留空则下载完整视频。">
+              <el-icon style="margin-left:4px;cursor:help"><QuestionFilled /></el-icon>
+            </el-tooltip>
+          </template>
+          <el-row :gutter="8" style="width:100%">
+            <el-col :span="11">
+              <el-input-number
+                v-model="form.trim_start"
+                :min="0"
+                :step="1"
+                :precision="1"
+                placeholder="起始 (秒)"
+                controls-position="right"
+                style="width:100%"
+              />
+            </el-col>
+            <el-col :span="2" style="text-align:center;line-height:32px">-</el-col>
+            <el-col :span="11">
+              <el-input-number
+                v-model="form.trim_end"
+                :min="0"
+                :step="1"
+                :precision="1"
+                placeholder="结束 (秒)"
+                controls-position="right"
+                style="width:100%"
+              />
+            </el-col>
+          </el-row>
+        </el-form-item>
+
         <el-form-item label="分类">
           <el-select v-model="form.category_id" placeholder="可选" clearable>
             <el-option
@@ -57,7 +92,7 @@
 
         <el-form-item>
           <el-button type="primary" @click="submit" :loading="submitting">
-            {{ sourceType === 'local_file' ? '上传并添加' : '添加视频' }}
+            {{ sourceType === 'local_file' ? '上传并添加' : '添加并导入' }}
           </el-button>
           <el-button @click="$router.push('/')">取消</el-button>
         </el-form-item>
@@ -69,8 +104,8 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { UploadFilled } from '@element-plus/icons-vue'
-import { addVideo, addLocalVideo } from '../api/videos'
+import { UploadFilled, QuestionFilled } from '@element-plus/icons-vue'
+import { addVideo, addLocalVideo, triggerImportYoutube, triggerImportBilibili } from '../api/videos'
 import { getCategories } from '../api/categories'
 
 const router = useRouter()
@@ -84,6 +119,8 @@ const form = ref({
   category_id: null,
   original_language: 'auto',
   source_type: 'youtube',
+  trim_start: null,
+  trim_end: null,
 })
 
 onMounted(async () => {
@@ -130,6 +167,22 @@ async function submit() {
       form.value.source_type = sourceType.value
       const res = await addVideo(form.value)
       data = res.data
+      // Auto-trigger import immediately
+      const importBody = {
+        url: form.value.url,
+        original_language: form.value.original_language,
+        trim_start: form.value.trim_start,
+        trim_end: form.value.trim_end,
+      }
+      try {
+        if (sourceType.value === 'youtube') {
+          await triggerImportYoutube(data.id, importBody)
+        } else if (sourceType.value === 'bilibili') {
+          await triggerImportBilibili(data.id, importBody)
+        }
+      } catch (e) {
+        console.error('Auto-import failed, user can retry manually', e)
+      }
     }
     router.push(`/video/${data.id}`)
   } catch (e) {

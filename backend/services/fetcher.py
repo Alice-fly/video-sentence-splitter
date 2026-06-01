@@ -132,6 +132,8 @@ async def fetch_video_info(
     quality: str = "720p",
     cookies_from_browser: str = "",
     cookies_text: str = "",
+    trim_start: float | None = None,
+    trim_end: float | None = None,
 ):
     """
     Download video to local cache, merge audio+video, extract subtitles.
@@ -169,6 +171,12 @@ async def fetch_video_info(
         "js_runtimes": {"node": {}},
         "remote_components": ["ejs:github"],
     }
+
+    # Apply video trimming (download_ranges) if both start and end are specified
+    if trim_start is not None and trim_end is not None:
+        ydl_opts["download_ranges"] = lambda info, ydl: [
+            {"start_time": trim_start, "end_time": trim_end}
+        ]
 
     _temp_cookie_file = _apply_cookie_options(ydl_opts, cookies_text, cookies_from_browser, _detect_platform(url))
 

@@ -1,8 +1,9 @@
 import os
+import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from database import init_db
+from database import init_db, checkpoint_database, engine
 from config import SUBTITLES_DIR, OUTPUTS_DIR
 from routers.settings import router as settings_router
 from routers.categories import router as categories_router
@@ -12,6 +13,8 @@ from routers.subtitles import router as subtitles_router
 from routers.segmentation import router as segmentation_router
 from routers.translation import router as translation_router
 
+logger = logging.getLogger(__name__)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -19,6 +22,11 @@ async def lifespan(app: FastAPI):
     os.makedirs(OUTPUTS_DIR, exist_ok=True)
     await init_db()
     yield
+    # Graceful shutdown: flush WAL and close connections
+    logger.info("Shutting down: checkpointing database...")
+    await checkpoint_database()
+    await engine.dispose()
+    logger.info("Shutdown complete")
 
 
 app = FastAPI(title="Video Sentence Splitter", version="1.0", lifespan=lifespan)

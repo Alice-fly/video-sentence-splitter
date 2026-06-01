@@ -75,6 +75,8 @@ async def run_import_youtube(
             url, video_id, quality=video_quality,
             cookies_from_browser=cookies_from_browser,
             cookies_text=cookies_text,
+            trim_start=video.trim_start,
+            trim_end=video.trim_end,
         )
 
         video.title = title or "Untitled"
@@ -133,6 +135,8 @@ async def run_import_bilibili(
             url, video_id, quality=video_quality,
             cookies_from_browser=cookies_from_browser,
             cookies_text=cookies_text,
+            trim_start=video.trim_start,
+            trim_end=video.trim_end,
         )
 
         video.title = title or "Untitled"
@@ -225,6 +229,21 @@ async def run_subtitle_whisper(
                 start_time=e["start_time"],
                 end_time=e["end_time"],
                 text=e["text"],
+            ))
+
+        # Auto-promote raw subtitles to editable sentences (AI segmentation optional)
+        await _clear_sentences(db, video_id)
+        await db.commit()
+        for e in entries:
+            dur = round(e["end_time"] - e["start_time"], 3)
+            db.add(Sentence(
+                video_id=video_id,
+                index=e["index"],
+                original_text=e["text"],
+                translated_text="",
+                start_time=e["start_time"],
+                end_time=e["end_time"],
+                duration=dur,
             ))
 
         await _update_step(db, video, "subtitle", "completed",
@@ -350,6 +369,21 @@ async def run_subtitle_embedded(
                 text=e.text,
             ))
 
+        # Auto-promote raw subtitles to editable sentences (AI segmentation optional)
+        await _clear_sentences(db, video_id)
+        await db.commit()
+        for e in entries:
+            dur = round(e.end - e.start, 3)
+            db.add(Sentence(
+                video_id=video_id,
+                index=e.index,
+                original_text=e.text,
+                translated_text="",
+                start_time=e.start,
+                end_time=e.end,
+                duration=dur,
+            ))
+
         await _update_step(db, video, "subtitle", "completed",
             f"字幕已解析 ({len(entries)} 条)", 100, notify)
 
@@ -467,16 +501,13 @@ async def run_translate(
     result = await db.execute(select(Video).where(Video.id == video_id))
     video = result.scalar_one()
 
-    if video.segment_status != "completed":
-        raise ValueError("请先完成断句")
-
     sent_result = await db.execute(
         select(Sentence).where(Sentence.video_id == video_id).order_by(Sentence.index)
     )
     sentences = sent_result.scalars().all()
 
     if not sentences:
-        raise ValueError("没有可用的句子进行翻译")
+        raise ValueError("没有可用的句子进行翻译，请先完成字幕提取")
 
     # Build simple dict list for translation
     sent_dicts = [
@@ -616,3 +647,9 @@ async def _clear_raw_subtitles(db: AsyncSession, video_id: str):
     """Delete all raw subtitle entries for a video."""
     from sqlalchemy import delete as sa_delete
     await db.execute(sa_delete(RawSubtitle).where(RawSubtitle.video_id == video_id))
+
+
+async def _clear_sentences(db: AsyncSession, video_id: str):
+    """Delete all sentence entries for a video."""
+    from sqlalchemy import delete as sa_delete
+    await db.execute(sa_delete(Sentence).where(Sentence.video_id == video_id))

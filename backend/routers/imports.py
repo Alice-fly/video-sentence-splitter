@@ -34,6 +34,10 @@ async def trigger_import_youtube(
     v.url = body.url or v.url
     v.original_language = body.original_language or v.original_language
     v.source_type = "youtube"
+    if body.trim_start is not None:
+        v.trim_start = body.trim_start
+    if body.trim_end is not None:
+        v.trim_end = body.trim_end
     await db.commit()
 
     asyncio.create_task(_run_import_task(video_id, "youtube", body.url or v.url, body.original_language or v.original_language))
@@ -60,6 +64,10 @@ async def trigger_import_bilibili(
     v.url = body.url or v.url
     v.original_language = body.original_language or v.original_language
     v.source_type = "bilibili"
+    if body.trim_start is not None:
+        v.trim_start = body.trim_start
+    if body.trim_end is not None:
+        v.trim_end = body.trim_end
     await db.commit()
 
     asyncio.create_task(_run_import_task(video_id, "bilibili", body.url or v.url, body.original_language or v.original_language))

@@ -59,6 +59,8 @@ class VideoAddRequest(BaseModel):
     source_type: Literal["youtube", "bilibili", "local_file"] = "youtube"
     category_id: Optional[str] = None
     original_language: Literal["auto", "ja", "en", "zh"] = "auto"
+    trim_start: Optional[float] = None
+    trim_end: Optional[float] = None
 
 
 class VideoOut(BaseModel):
@@ -73,6 +75,8 @@ class VideoOut(BaseModel):
     original_language: str
     error_message: Optional[str] = None
     duration: Optional[float] = None
+    trim_start: Optional[float] = None
+    trim_end: Optional[float] = None
     stream_url: Optional[str] = None
     local_video_path: Optional[str] = None
     created_at: datetime
@@ -155,6 +159,8 @@ class RawSubtitleOut(BaseModel):
 class ImportStart(BaseModel):
     url: str = ""
     original_language: str = "auto"
+    trim_start: Optional[float] = None
+    trim_end: Optional[float] = None
 
 
 # ── Settings ──

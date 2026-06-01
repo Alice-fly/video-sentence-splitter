@@ -1,9 +1,17 @@
 import os
+import shutil
+import logging
+from datetime import datetime
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from sqlalchemy.orm import DeclarativeBase
 from config import DATA_DIR
 
+logger = logging.getLogger(__name__)
+
 DATABASE_URL = f"sqlite+aiosqlite:///{os.path.join(DATA_DIR, 'app.db')}"
+DB_PATH = os.path.join(DATA_DIR, "app.db")
+BACKUP_DIR = os.path.join(DATA_DIR, "backups")
+MAX_BACKUPS = 5
 
 engine = create_async_engine(
     DATABASE_URL,
@@ -22,11 +30,37 @@ async def get_db() -> AsyncSession:
         yield session
 
 
+def _backup_database() -> str | None:
+    """Create a timestamped backup of the database before running migrations.
+    Returns the backup path if successful, None otherwise.
+    """
+    if not os.path.exists(DB_PATH):
+        return None
+    try:
+        os.makedirs(BACKUP_DIR, exist_ok=True)
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        backup_path = os.path.join(BACKUP_DIR, f"app_{timestamp}.db")
+        shutil.copy2(DB_PATH, backup_path)
+
+        # Rotate old backups: keep only the last MAX_BACKUPS
+        backups = sorted(
+            [f for f in os.listdir(BACKUP_DIR) if f.startswith("app_") and f.endswith(".db")],
+            reverse=True,
+        )
+        for old in backups[MAX_BACKUPS:]:
+            os.remove(os.path.join(BACKUP_DIR, old))
+
+        logger.info("Database backup created: %s", backup_path)
+        return backup_path
+    except Exception as e:
+        logger.warning("Failed to create database backup: %s", e)
+        return None
+
+
 async def _enable_wal():
     """Enable WAL mode for better concurrent read/write performance."""
     import aiosqlite
-    db_path = os.path.join(DATA_DIR, "app.db")
-    async with aiosqlite.connect(db_path) as db:
+    async with aiosqlite.connect(DB_PATH) as db:
         await db.execute("PRAGMA journal_mode=WAL")
         await db.execute("PRAGMA synchronous=NORMAL")
 
@@ -53,6 +87,8 @@ async def _migrate_step_columns(conn):
         ("translate_progress", "INTEGER DEFAULT 0"),
         ("translate_progress_message", "TEXT DEFAULT ''"),
         ("translate_error_message", "TEXT"),
+        ("trim_start", "REAL"),
+        ("trim_end", "REAL"),
     ]
 
     # Get existing columns
@@ -129,10 +165,54 @@ async def _backfill_existing_videos(conn):
         # pending — leave all not_started
 
 
+async def _run_integrity_check():
+    """Run SQLite integrity check and log warnings if corruption detected."""
+    import aiosqlite
+    try:
+        async with aiosqlite.connect(DB_PATH) as db:
+            result = await db.execute("PRAGMA integrity_check")
+            row = await result.fetchone()
+            if row and row[0] != "ok":
+                logger.warning("Database integrity check: %s", row[0])
+            else:
+                logger.info("Database integrity check: ok")
+    except Exception as e:
+        logger.warning("Database integrity check failed: %s", e)
+
+
+async def checkpoint_database():
+    """Flush WAL to main database file. Call on graceful shutdown to prevent data loss."""
+    import aiosqlite
+    try:
+        async with aiosqlite.connect(DB_PATH) as db:
+            await db.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+            logger.info("WAL checkpoint completed")
+    except Exception as e:
+        logger.warning("WAL checkpoint failed: %s", e)
+
+
 async def init_db():
+    """Initialize database: create tables, run migrations, backfill data.
+    Creates a backup before any schema changes to prevent data loss.
+    """
     from models.orm import Video, Category, Sentence, Settings, RawSubtitle  # noqa: F401
+
+    # 1. Backup before any changes
+    _backup_database()
+
+    # 2. Enable WAL mode
     await _enable_wal()
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-        await _migrate_step_columns(conn)
-        await _backfill_existing_videos(conn)
+
+    # 3. Run integrity check
+    await _run_integrity_check()
+
+    # 4. Create tables and run migrations in a single transaction
+    try:
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+            await _migrate_step_columns(conn)
+            await _backfill_existing_videos(conn)
+        logger.info("Database initialization completed successfully")
+    except Exception as e:
+        logger.exception("Database initialization failed: %s", e)
+        raise
