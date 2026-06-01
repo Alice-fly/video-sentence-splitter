@@ -1,6 +1,6 @@
 # Video Sentence Splitter
 
-外语学习工具：YouTube / B站 / 本地视频 → 字幕提取（Whisper） → LLM 语义断句 → 翻译 → 流媒体播放 + 交互编辑。
+外语学习工具：YouTube / B站 / 本地视频 → 字幕提取（Whisper） → LLM 语义断句 → 翻译 → 媒体播放 + 交互编辑。
 
 ## 功能
 
@@ -12,7 +12,7 @@
 
 ## 快速开始
 
-从 [Releases](../../releases) 下载最新打包版本，解压后双击 `start.bat`，浏览器自动打开即可使用。
+从 [Releases](../../releases) 下载最新打包版本，解压后双击 `start.bat`，程序会自动下载相关依赖，等浏览器自动打开即可使用。
 
 首次使用需要配置 **LLM API Key**（支持所有 OpenAI 兼容接口，如 DeepSeek、OpenAI、Groq 等），以及可选的 YouTube/B站 Cookie。
 
